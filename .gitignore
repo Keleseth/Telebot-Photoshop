@@ -8,3 +8,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# IDE
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
