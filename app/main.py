@@ -1,0 +1,19 @@
+from fastapi import FastAPI
+import os
+from redis.asyncio import Redis
+
+from .config import settings
+
+app = FastAPI(
+    title=settings.app_title,
+    description=settings.description,
+    version='1.0.0'
+)
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+r = Redis.from_url(REDIS_URL, decode_responses=True)
+
+@app.get("/health")
+async def health():
+    ok = await r.ping()
+    return {"status": "ok", "redis": ok}
