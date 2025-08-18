@@ -9,8 +9,9 @@ from aiogram.client.session.aiohttp import AiohttpSession
 
 from bot.config import config
 from bot.handlers import (
-    start,
-    photos
+    incoming_photos_router,
+    remove_photos_bg_router,
+    start_router,
 )
 
 
@@ -37,9 +38,9 @@ async def main():
     storage = MemoryStorage()
 
     dp = Dispatcher(storage=storage)
-    dp.include_router(start.router)
-    dp.include_router(photos.router)
-
+    dp.include_router(incoming_photos_router)
+    dp.include_router(remove_photos_bg_router)
+    dp.include_router(start_router)
     # Регистрируем все хэндлеры из пакета handlers
     # register_all_handlers(dp) #TODO написать функцию массовой регистрации
 

@@ -11,3 +11,4 @@ class PhotoProcessState(StatesGroup):
     """
 
     waiting_instructions = State()
+    awaiting_order = State()
