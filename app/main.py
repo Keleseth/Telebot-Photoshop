@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import os
 from redis.asyncio import Redis
 
-from .config import settings
+from app.config import settings
 
 app = FastAPI(
     title=settings.app_title,
