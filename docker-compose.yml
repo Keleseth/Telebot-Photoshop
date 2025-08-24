@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+
+  api:
+    build: ./app
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  bot:
+    build: ./bot
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:8000
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - api
+      - redis
+
+volumes:
+  redis_data:

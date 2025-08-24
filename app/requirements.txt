@@ -1,0 +1,12 @@
+fastapi==0.116.1
+uvicorn[standard]==0.30.6
+redis==6.4.0
+pydantic==2.11.4
+pydantic-settings>=2.2,<3
+python-dotenv==1.1.0
+sqlalchemy==2.0.40
+asyncpg==0.30.0
+alembic==1.15.2
+rembg==2.0.57
+pillow==10.4.0
+python-multipart
