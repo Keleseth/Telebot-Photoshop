@@ -11,4 +11,4 @@ class PhotoProcessState(StatesGroup):
     """
 
     waiting_instructions = State()
-    awaiting_order = State()
+    waiting_bg_color = State()
