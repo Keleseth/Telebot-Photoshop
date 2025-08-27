@@ -1,13 +1,24 @@
-import os
-import aiohttp
+import aiohttp, json, os
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, BufferedInputFile
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    ContentType,
+    Message,
+    ReplyKeyboardRemove
+)
 from aiogram.utils.chat_action import ChatActionSender
 
 
-from bot.callbacks.photo_callbacks import PhotoActionCallback
+from bot.callbacks.photo_callbacks import (
+    BackgroundCallback,
+    PhotoActionCallback
+)
+from bot.constants import ALLOWED_COLORS, NETIFY_PALLETE_URL
+from bot.keyboards.photo_keyaboards import kb_palette
 from bot.states.photo_process import PhotoProcessState
+
 
 API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8000')
 
@@ -28,29 +39,78 @@ async def photo_remove_bg(
     if not file_id:
         await callback.answer("Нет фото — пришли заново", show_alert=True)
         return
-
     await callback.message.edit_text('Опция выбрана: убрать фон', reply_markup=None)
-    await callback.answer()
-    await state.clear()
+    # await callback.message.answer(
+    #     text='Откройте палитру, выберите цвет и подтвердите.',
+    #     reply_markup=kb_palette()
+    # )
+    await callback.message.answer(
+        text="🎨 Откройте WebApp для выбора цвета фона.",
+        reply_markup=kb_palette(NETIFY_PALLETE_URL)
+    )
+    await state.update_data(file_id=file_id)
+    await state.set_state(PhotoProcessState.waiting_bg_color)
 
-    async with ChatActionSender.upload_photo(bot=callback.bot, chat_id=callback.message.chat.id):
-        tg_file = await callback.bot.get_file(file_id)
-        file_bytes_io = await callback.bot.download_file(tg_file.file_path)
-        img_bytes = file_bytes_io.getvalue()
 
-        form = aiohttp.FormData()
-        form.add_field(
-            name='file',
-            value=img_bytes,
-            filename='input.jpg',
-            content_type='image/jpeg',
+@router.message(
+    F.content_type == ContentType.WEB_APP_DATA,
+    PhotoProcessState.waiting_bg_color,
+)
+async def color_selected_from_webapp(
+    message: Message,
+    state: FSMContext
+):
+    try:
+        data = await state.get_data()
+        file_id = data.get('last_photo_id')
+        payload = json.loads(message.web_app_data.data)
+        chosen_hex_color = payload.get('hex')
+        if not chosen_hex_color:
+            await message.answer('Цвет не выбран. Повторите выбор в палитре.')
+            return
+        await state.update_data(bg_color_hex=chosen_hex_color)
+
+        async with ChatActionSender.upload_photo(
+            bot=message.bot,
+            chat_id=message.chat.id
+        ):
+            image_metadata = await message.bot.get_file(file_id=file_id)
+            image_bytes_io = await message.bot.download_file(
+                file_path=image_metadata.file_path
+            )
+            image_bytes = image_bytes_io.getvalue()
+            form = aiohttp.FormData()
+            form.add_field(
+                name='image',
+                value=image_bytes,
+                filename='input.jpg',
+                content_type='image/jpeg'
+            )
+            form.add_field(
+                name='color',
+                value=chosen_hex_color,
+            )
+            timeout = aiohttp.ClientTimeout(total=120)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    f'{API_BASE_URL}/bg/remove',
+                    data=form
+                ) as resp:
+                    body = await resp.read()
+                    if resp.status != 200 or not body:
+                        await message.answer(
+                            'Ошибка при обработке, повторите попытку.'
+                        )
+                        return
+            new_image = BufferedInputFile(body, filename='updated_photo.png')
+            await message.answer_photo(
+                photo=new_image,
+                caption='Готово 🎯',
+                reply_markup=ReplyKeyboardRemove()
+            )
+            await state.clear()
+
+    except Exception as e:
+        await message.answer(
+            f'Не удалось обработать цвет из палитры :(\n{e!s}'
         )
-        timeout = aiohttp.ClientTimeout(total=120)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(f'{API_BASE_URL}/bg/remove', data=form) as resp:
-                body = await resp.read()
-                if resp.status != 200 or not body:
-                    await callback.message.answer(f'API {resp.status}: {body[:200]!r}')
-                    return
-        img = BufferedInputFile(body, filename="no-bg.png")
-        await callback.message.answer_photo(photo=img, caption="Готово 🎯 фон убран")
