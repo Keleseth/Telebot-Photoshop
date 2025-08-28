@@ -3,45 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Color Wheel Picker</title>
+  <title>Выбор цвета</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
-    #picker { margin-bottom: 16px; }
-    #swatch { width: 40px; height: 40px; border:1px solid #ccc; display:inline-block; vertical-align:middle; border-radius: 6px;}
-    button { padding: 10px 14px; border-radius: 8px; background:#111827; color:#fff; border:0; cursor:pointer; }
+    :root { --pad: 16px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: var(--pad); }
+    #picker { margin-bottom: 12px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; background:#111827; color:#fff; font-weight:600; }
+    .color-input { width: 48px; height: 48px; border: 2px solid #e5e7eb; border-radius: 9999px; padding:0; appearance: none; background: none; }
+    .color-input::-webkit-color-swatch-wrapper { padding:0; border-radius: 9999px; }
+    .color-input::-webkit-color-swatch { border: none; border-radius: 9999px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/iro@5.5.3/dist/iro.min.js"></script>
 </head>
 <body>
-  <h3>Pick a color</h3>
+  <h3>Выберите цвет</h3>
   <div id="picker"></div>
-  <div>
-    <div id="swatch"></div>
-    <span>HEX: <code id="hex">#0047AB</code></span>
-    <span>RGB: <code id="rgb">rgb(0,71,171)</code></span>
-  </div>
-  <div style="margin-top:16px;">
-    <button id="useBtn">Use this color</button>
-  </div>
+  <button id="useBtn">Подтвердить</button>
 
   <script>
     const tg = window.Telegram?.WebApp; tg?.ready(); tg?.expand();
-
-    const $hex = document.getElementById('hex');
-    const $rgb = document.getElementById('rgb');
-    const $swatch = document.getElementById('swatch');
     const $pickerWrap = document.getElementById('picker');
     const $btn = document.getElementById('useBtn');
 
-    let current = { hex: '#0047AB', rgb: { r:0, g:71, b:171, value:'rgb(0,71,171)' } };
+    let current = { hex: '#FF69B4', rgb: { r:255, g:105, b:180, value:'rgb(255, 105, 180)' } };
 
     function setCurrent(hex) {
       const m = hex.replace('#','');
-      const r = parseInt(m.slice(0,2),16), g = parseInt(m.slice(2,4),16), b = parseInt(m.slice(4,6),16);
+      const r = parseInt(m.slice(0,2),16),
+            g = parseInt(m.slice(2,4),16),
+            b = parseInt(m.slice(4,6),16);
       current = { hex, rgb: { r, g, b, value: `rgb(${r}, ${g}, ${b})` } };
-      $hex.textContent = current.hex;
-      $rgb.textContent = current.rgb.value;
-      $swatch.style.background = current.hex;
     }
 
     function attachButton() {
@@ -52,7 +45,7 @@
     }
 
     function initFallbackInput() {
-      $pickerWrap.innerHTML = '<input type="color" id="fallbackColor" value="#0047AB">';
+      $pickerWrap.innerHTML = '<input type="color" id="fallbackColor" class="color-input" value="#FF69B4">';
       const input = document.getElementById('fallbackColor');
       setCurrent(input.value);
       input.addEventListener('input', e => setCurrent(e.target.value));
@@ -62,35 +55,29 @@
     function initIro() {
       try {
         const picker = new window.iro.ColorPicker('#picker', {
-          width: Math.min(window.innerWidth - 32, 320),
-          color: '#0047AB',
+          width: Math.min(window.innerWidth - 2*16, 320),
+          color: '#FF69B4',
           borderWidth: 1,
-          borderColor: '#e5e7eb'
+          borderColor: '#e5e7eb',
+          layout: [
+            { component: iro.ui.Wheel },
+            { component: iro.ui.Slider, options: { sliderType: 'value' } },
+            { component: iro.ui.Slider, options: { sliderType: 'saturation' } }
+          ]
         });
         function update(c){
-          const hex = c.hexString, rgbStr = c.rgbString;
-          const {r,g,b} = c.rgb;
-          current = { hex, rgb: { r,g,b, value: rgbStr } };
-          $hex.textContent = hex; $rgb.textContent = rgbStr; $swatch.style.background = hex;
+          const hex = c.hexString; const {r,g,b} = c.rgb;
+          current = { hex, rgb: { r,g,b, value: `rgb(${r}, ${g}, ${b})` } };
         }
         update(picker.color);
         picker.on('color:change', update);
         attachButton();
-      } catch (e) {
+      } catch {
         initFallbackInput();
       }
     }
 
-    // Загружаем iro.js с CDN и только потом инициализируем
-    (function loadIro(){
-      if (window.iro) { initIro(); return; }
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/iro@5.5.3/dist/iro.min.js';
-      s.onload = () => initIro();
-      s.onerror = () => initFallbackInput();
-      document.head.appendChild(s);
-    })();
-
+    if (window.iro) initIro(); else initFallbackInput();
   </script>
 </body>
 </html>
