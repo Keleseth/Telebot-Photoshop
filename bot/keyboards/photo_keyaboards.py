@@ -35,14 +35,14 @@ def kb_background_colors() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-# def kb_palette():
-#     builder = InlineKeyboardBuilder()
-#     builder.button(
-#         text="🎨 Выбрать палитру",
-#         web_app=WebAppInfo(url=NETIFY_PALLETE_URL)
-#     )
-#     builder.adjust(1)
-#     return builder.as_markup()
+def kb_palette():
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="🎨 Выбрать палитру",
+        web_app=WebAppInfo(url=NETIFY_PALLETE_URL)
+    )
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def kb_palette(url: str):
@@ -53,3 +53,13 @@ def kb_palette(url: str):
         )]],
         resize_keyboard=True
     )
+
+
+# def kb_palette_inline(url: str) -> InlineKeyboardMarkup:
+#     kb = InlineKeyboardBuilder()
+#     kb.button(
+#         text='🌈 Выбрать цвет (WebApp)',
+#         web_app=WebAppInfo(url=url)  # ВАЖНО: web_app, не url
+#     )
+#     kb.adjust(1)
+#     return kb.as_markup()
