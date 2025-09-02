@@ -1,39 +1,19 @@
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dotenv import load_dotenv
-from pydantic import ConfigDict
-from pydantic_settings import BaseSettings
-
-
-load_dotenv()
 
 class Settings(BaseSettings):
-    db_type: str = os.getenv('DB_TYPE', 'postgresql')
-    db_api: str = os.getenv('DB_API', 'asyncpg')
-    postgres_user: str = os.getenv('POSTGRES_USER', 'User')
-    postgres_password: str = os.getenv('POSTGRES_PASSWORD', 'qwerty')
-    db_host: str = os.getenv('DB_HOST', 'localhost')
-    port_db_postgres: str = os.getenv('PORT_DB_POSTGRES', '5432')
-    postgres_db: str = os.getenv('POSTGRES_DB', 'somedb')
+    """
+    Настройки приложения и секретные данные.
+    """
 
-    app_title: str = os.getenv('APP_TITLE', 'FlexSet')
-    description: str = os.getenv('DESCRIPTION', 'Language learning platform')
-    log_level: str = os.getenv('LOG_LEVEL', 'DEBUG')
-    secret: str = os.getenv('SECRET', 'secret')
-    reset_password_token_secret: str = os.getenv(
-        'RESET_PASSWORD_SECRET', '123')
-    verification_token_secret: str = os.getenv(
-        'VERIFICATION_SECRET', '123')
+    app_title: str = 'Telebot-photoshop API'
+    description: str = 'Telegram bot – photo background remover with color palette'
+    api_version: str = '1'
+    log_level: str = 'INFO'
+    api_host: str = '0.0.0.0'
+    api_port: int = 8000
+    allowed_image_mb: int = 15
 
-    model_config = ConfigDict(env_file='.env', extra='ignore')
-
-    @property
-    def database_url(self):
-        return (
-            f'{self.db_type}+{self.db_api}://'
-            f'{self.postgres_user}:{self.postgres_password}@'
-            f'{self.db_host}:{self.port_db_postgres}/{self.postgres_db}'
-        )
-
+    model_config = SettingsConfigDict(env_file='.env', case_sensitive=False)
 
 settings = Settings()

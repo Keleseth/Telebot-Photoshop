@@ -9,27 +9,34 @@ from aiogram.types import (
     ReplyKeyboardRemove
 )
 from aiogram.utils.chat_action import ChatActionSender
-
+from redis.asyncio import Redis
 
 from bot.callbacks.photo_callbacks import (
-    BackgroundCallback,
     PhotoActionCallback
 )
-from bot.constants import ALLOWED_COLORS, NETIFY_PALLETE_URL
+from bot.constants import (
+    CHOOSE_COLOR,
+    CHOSEN_OPTION_RM_BG,
+    INCORRECT_COLOR,
+    NETIFY_PALLETE_URL,
+    NO_COLOR,
+    NO_PHOTO,
+    SERVER_ERROR,
+)
 from bot.keyboards.photo_keyaboards import kb_palette
 from bot.states.photo_process import PhotoProcessState
 
 
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8000')
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8000/api/v1')
 
-router = Router(name='photo_remove_bg')
+rm_bg_router = Router(name='photo_remove_bg')
+bg_color_change_router = Router(name='bg_color_change')
 
-
-@router.callback_query(
+@rm_bg_router.callback_query(
     PhotoActionCallback.filter(F.action == 'rm_bg'),
     PhotoProcessState.waiting_instructions
 )
-async def photo_remove_bg(
+async def photo_remove_bg_option(
     callback: CallbackQuery,
     callback_data: PhotoActionCallback,
     state: FSMContext
@@ -37,22 +44,22 @@ async def photo_remove_bg(
     data = await state.get_data()
     file_id = data.get('last_photo_id')
     if not file_id:
-        await callback.answer("Нет фото — пришли заново", show_alert=True)
+        await callback.answer(NO_PHOTO, show_alert=True)
         return
-    await callback.message.edit_text('Опция выбрана: убрать фон', reply_markup=None)
+    await callback.message.edit_text(CHOSEN_OPTION_RM_BG, reply_markup=None)
     # await callback.message.answer(
     #     text='Откройте палитру, выберите цвет и подтвердите.',
     #     reply_markup=kb_palette()
     # )
     await callback.message.answer(
-        text="🎨 Откройте WebApp для выбора цвета фона.",
+        text=CHOOSE_COLOR,
         reply_markup=kb_palette(NETIFY_PALLETE_URL)
     )
     await state.update_data(file_id=file_id)
     await state.set_state(PhotoProcessState.waiting_bg_color)
 
 
-@router.message(
+@bg_color_change_router.message(
     F.content_type == ContentType.WEB_APP_DATA,
     PhotoProcessState.waiting_bg_color,
 )
@@ -66,7 +73,7 @@ async def color_selected_from_webapp(
         payload = json.loads(message.web_app_data.data)
         chosen_hex_color = payload.get('hex')
         if not chosen_hex_color:
-            await message.answer('Цвет не выбран. Повторите выбор в палитре.')
+            await message.answer(NO_COLOR)
             return
         await state.update_data(bg_color_hex=chosen_hex_color)
 
@@ -99,8 +106,10 @@ async def color_selected_from_webapp(
                     body = await resp.read()
                     if resp.status != 200 or not body:
                         await message.answer(
-                            'Ошибка при обработке, повторите попытку.'
+                            SERVER_ERROR,
+                            reply_markup=ReplyKeyboardRemove()
                         )
+                        await state.clear()
                         return
             new_image = BufferedInputFile(body, filename='updated_photo.png')
             await message.answer_photo(
@@ -112,5 +121,6 @@ async def color_selected_from_webapp(
 
     except Exception as e:
         await message.answer(
-            f'Не удалось обработать цвет из палитры :(\n{e!s}'
+            INCORRECT_COLOR,
         )
+        raise e
